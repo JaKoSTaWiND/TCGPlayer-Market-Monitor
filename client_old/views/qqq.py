@@ -4,10 +4,10 @@ import os
 import sys
 
 # Подключаем корневую директорию проекта
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from app.config import DATA_DIR
-from functions.dialogs.add_data_to_parquet import add_data_to_parquet
-from functions.dialogs.delete_data_from_parquet import delete_data_from_parquet
+from client.functions.dialogs.add_data_to_parquet import add_data_to_parquet
+from client.functions.dialogs.delete_data_from_parquet import delete_data_from_parquet
 
 st.set_page_config(layout='wide')
 

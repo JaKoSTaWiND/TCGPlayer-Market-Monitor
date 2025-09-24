@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import os
 from datetime import datetime
-from config import TCGPLAYER_API_URL, DATA_DIR
+from app.config import TCGPLAYER_API_URL, DATA_DIR
 
 def get_cards_productIds(game_name: str, set_value: str, max_pages: int = 10):
     safe_name = game_name.lower().replace(" ", "_").replace(":", "")
