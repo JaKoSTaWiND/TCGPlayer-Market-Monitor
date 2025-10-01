@@ -1,39 +1,15 @@
-import requests
 import pandas as pd
 import os
-from datetime import datetime
-from config import TCGPLAYER_API_URL, DATA_DIR
+import asyncio
+import aiohttp
+import streamlit as st
 
-def get_cards_productIds(game_name: str, set_value: str, max_pages: int = 10):
-    safe_name = game_name.lower().replace(" ", "_").replace(":", "")
-    sets_path = os.path.join(DATA_DIR, f"{safe_name}_sets.parquet")
+from config import DATA_DIR
+from config import TCGPLAYER_CARD_IDS_API_URL
 
-    if not os.path.exists(sets_path):
-        print(f"❌ Файл сетов не найден: {sets_path}")
-        return
+async def fetch_card_ids(session, game_index, setName, offset):
 
-    try:
-        df_sets = pd.read_parquet(sets_path)
-    except Exception as e:
-        print(f"❌ Ошибка при чтении parquet: {e}")
-        return
-
-    match = df_sets[df_sets["value"] == set_value]
-    if match.empty:
-        print(f"⚠️ Сет '{set_value}' не найден в {sets_path}")
-        return
-
-    url_value = match.iloc[0]["urlValue"]
-    today = datetime.today().strftime("%d.%m.%y")
-
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0",
-        "Origin": "https://www.tcgplayer.com",
-        "Referer": f"https://www.tcgplayer.com/search/{safe_name}/product"
-    }
-
-    base_payload = {
+    api_request = {
         "algorithm": "sales_dismax",
         "context": {
             "cart": {},
@@ -41,88 +17,109 @@ def get_cards_productIds(game_name: str, set_value: str, max_pages: int = 10):
             "userProfile": {}
         },
         "filters": {
+            "match": {},
+            "range": {},
             "term": {
-                "productLineName": [game_name],
-                "setName": [url_value]
-            }
+                "productLineName": [game_index],
+                "setName": [setName]
+            },
         },
+        "from": offset,
         "listingSearch": {
+            "context": {
+                "cart": {},
+            },
             "filters": {
+                "exclude": {
+                    "channelExclusion": 0,
+                },
                 "range": {
-                    "quantity": {"gte": 1}
+                    "quantity": {
+                        "gte": 1,
+                    },
                 },
                 "term": {
-                    "sellerStatus": "Live"
-                }
-            }
+                    "channelId": 0,
+                    "sellerStatus": "Live",
+                },
+            },
         },
         "settings": {
-            "useFuzzySearch": True
+            "didYouMean": {},
+            "useFuzzySearch": True,
         },
-        "size": 48,
-        "sort": {
-            "field": "market-price",
-            "order": "desc"
-        }
+        "size": 50,
+        "sort": {},
     }
 
-    all_product_ids = []
+    try:
+        response = await session.post(TCGPLAYER_CARD_IDS_API_URL, json=api_request)
+        if response.status != 200:
+            print(response.status)
+            return []
 
-    for page in range(max_pages):
-        payload = base_payload.copy()
-        payload["from"] = page * 48  # 48 карточек на страницу
+        card_json = await response.json()
+        card_list = card_json["results"][0]["results"]
 
-        response = requests.post(TCGPLAYER_API_URL, json=payload, headers=headers)
-        if response.status_code != 200:
-            print(f"❌ Ошибка {response.status_code} на странице {page}")
-            break
+        ids = [
+            {
+                "productLineUrlName": item.get("productLineUrlName"),
+                "setName": item.get("setName"),
+                "productId": item.get("productId")
+            }
+            for item in card_list
+            if item.get("productId") and item.get("setName") and item.get("productLineUrlName")
+        ]
 
-        try:
-            data = response.json()
-        except Exception as e:
-            print(f"❌ Ошибка при парсинге JSON: {e}")
-            break
+        return ids
 
-        page_ids = []
-        for result_block in data.get("results", []):
-            for product in result_block.get("results", []):
-                pid = product.get("productId")
-                if pid is not None:
-                    page_ids.append(int(pid))
-                    all_product_ids.append(int(pid))
+    except Exception as e:
+        print(e)
+        return []
 
-        print(f"✅ Страница {page + 1}/{max_pages} — получено {len(page_ids)} ID")
 
-        if not page_ids:
-            print("⚠️ Пустая страница — остановка")
-            break
+    except Exception as e:
+        print(e)
 
-    new_df = pd.DataFrame({
-        "productId": all_product_ids,
-        "setName": set_value,
-        "date": today
-    })[["productId", "setName", "date"]]
+async def get_card_ids(game_index, sets):
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+        "Origin": "https://www.tcgplayer.com",
+    }
 
-    output_path = os.path.join(DATA_DIR, f"{safe_name}_product_ids.parquet")
+    all_results = []
 
-    if os.path.exists(output_path):
-        try:
-            existing_df = pd.read_parquet(output_path)
-        except Exception as e:
-            print(f"⚠️ Ошибка при чтении существующего файла: {e}")
-            existing_df = pd.DataFrame()
-    else:
-        existing_df = pd.DataFrame()
+    async with aiohttp.ClientSession(headers=headers) as session:
+        for setName in sets:
+            offsets = [i * 50 for i in range(30)]  # 0, 50, ..., 1450
 
-    combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-    combined_df.drop_duplicates(subset="productId", keep="first", inplace=True)
-    combined_df.to_parquet(output_path, index=False)
+            for i in range(0, len(offsets), 10):
+                batch = offsets[i:i + 10]
+                tasks = [
+                    fetch_card_ids(session, game_index, setName, offset)
+                    for offset in batch
+                ]
+                batch_results = await asyncio.gather(*tasks)
 
-    # print(new_df)
-    # print(f"✅ Добавлено {len(new_df)} productId из сета '{set_value}'")
-    # print(f"📦 Всего {len(combined_df)} уникальных productId для '{game_name}' сохранено в {output_path}")
-    # print(f"🔍 Собрано: {len(all_product_ids)}")
+                for result in batch_results:
+                    if result:
+                        for item in result:
+                            item["setName"] = setName
+                            all_results.append(item)
 
-    return new_df
+                # print(f"✅ Parsed {setName} batch {i // 10 + 1}")
+                st.toast(f"Parsed {setName} batch {i // 10 + 1}")
+                await asyncio.sleep(1)
 
-# get_cards_productIds("One piece card game", "Emperors in the New World")
+    # --- SAVE INTO PARQUET FILE ---
+    df_all = pd.DataFrame(all_results)
+    safe_name = game_index.replace("-", "_").replace(" ", "_")
+    output_path = os.path.join(DATA_DIR, f"{safe_name}_ids.parquet")
+    df_all.to_parquet(output_path, index=False)
+    # print(f"💾 Saved all sets: {len(df_all)} cards")
+    # st.toast = (f"Saved all sets: {len(df_all)} cards")
+
+
+
+# asyncio.run(get_card_ids())

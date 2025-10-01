@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 import os
-from app.config import TCGPLAYER_API_URL, DATA_DIR
+from config import TCGPLAYER_API_URL, DATA_DIR
 
 def get_all_sets(game_name: str = "One Piece Card Game"):
     headers = {
@@ -74,8 +74,6 @@ def get_all_sets(game_name: str = "One Piece Card Game"):
     output_path = os.path.join(DATA_DIR, f"{safe_name}_sets.parquet")
     df_sets.to_parquet(output_path, index=False)
 
-    # print(df_sets)
-    # print(f"✅ Собрано {len(df_sets)} уникальных сетов для '{game_name}' и сохранено в {output_path}")
 
     return df_sets
 

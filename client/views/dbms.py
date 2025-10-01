@@ -13,18 +13,15 @@ from client.utils.dialogs.add_data_from_file_dialog import add_data_from_file_di
 
 file_name = DatabaseTracker.get_name()
 file_path = DatabaseTracker.get_path()
-
 df = None
 
 
 # --- GET PARQUET FILES ---
 parquet_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".parquet")]
 
+st.set_page_config(layout="wide")
+
 col1, col2 = st.columns([3, 8], gap=None)
-
-
-
-
 
 # --- COL1: FILE TREE ---
 with col1:
@@ -54,49 +51,50 @@ with col1:
 
 
 # --- COL2: NAVBAR & TABLE ---
-with col2:
+if df is not None:
+    with col2:
 
-    # --- NAVBAR ---
-    nav_container = st.container(
-        border=True,
-        width="stretch",
-        horizontal=True,
-        gap="small",
-        horizontal_alignment="center",
-        vertical_alignment="bottom",
-        key="nav_container",
-    )
-
-    with nav_container:
-        search_input = st.text_input(
-            label="",
-            label_visibility="collapsed",
-            placeholder="Search...",
-            icon=":material/search:",
-            key="search_input"
+        # --- NAVBAR ---
+        nav_container = st.container(
+            border=True,
+            width="stretch",
+            horizontal=True,
+            gap="small",
+            horizontal_alignment="center",
+            vertical_alignment="bottom",
+            key="nav_container",
         )
 
-        button_width = 100
+        with nav_container:
+            search_input = st.text_input(
+                label="",
+                label_visibility="collapsed",
+                placeholder="Search...",
+                icon=":material/search:",
+                key="search_input"
+            )
 
-        go_to_edit_page_button = st.button(
-            label="",
-            icon=":material/table_edit:",
-            width=button_width,
-            key="go_to_edit_page_button"
+            button_width = 100
+
+            go_to_edit_page_button = st.button(
+                label="",
+                icon=":material/table_edit:",
+                width=button_width,
+                key="go_to_edit_page_button"
+            )
+
+            if go_to_edit_page_button and file_path:
+                st.switch_page("views/edit_table.py")
+
+        # --- TABLE ---
+        dataframe_container = st.container(
+            width="stretch",
+            height="content",
+            horizontal_alignment="center",
+            key="dataframe_container"
         )
 
-        if go_to_edit_page_button and file_path:
-            st.switch_page("views/edit_table.py")
 
-    # --- TABLE ---
-    dataframe_container = st.container(
-        width="stretch",
-        height="content",
-        horizontal_alignment="center",
-        key="dataframe_container"
-    )
-
-    if df is not None:
         with dataframe_container:
             query = search_input
             if query:
