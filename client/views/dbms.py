@@ -21,7 +21,7 @@ parquet_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".parquet")]
 
 st.set_page_config(layout="wide")
 
-col1, col2 = st.columns([3, 8], gap=None)
+col1, col2 = st.columns([2, 8], gap=None)
 
 # --- COL1: FILE TREE ---
 with col1:

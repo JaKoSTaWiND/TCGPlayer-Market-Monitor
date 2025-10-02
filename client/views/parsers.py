@@ -45,16 +45,18 @@ with get_card_ids_container:
     )
 
     # --- FILTER BY CHOSEN GAME ---
-    game_index = GAMES[game_selection] # --- index
+    game_index = GAMES[game_selection]["index"]
     safe_game_index = game_index.replace("-", "_").replace(" ", "_")
     parquet_filename = f"{safe_game_index}_sets.parquet"
     parquet_path = os.path.join(DATA_DIR, parquet_filename)
 
     try:
         df_sets = pd.read_parquet(parquet_path)
-        available_sets = df_sets["value"].tolist()
+        available_sets = df_sets["name"].tolist()
     except Exception as e:
-        st.error(f"❌ Не удалось загрузить наборы для {game_selection}: {e}")
+        # st.error(f"❌ Не удалось загрузить наборы для {game_selection}: {e}")
+        st.toast("No sets")
+        st.toast(f"{e}")
         available_sets = []
 
 
@@ -72,16 +74,19 @@ with get_card_ids_container:
     # --- ALL SETS CHECKBOX ---
     choose_all_sets = st.checkbox(label="All sets", width="stretch", key="choose_all_sets")
 
-    get_card_ids_button  = st.button("Update sets", width=300,key="get_card_ids")
+    get_card_ids_button  = st.button("Get card Ids", width=300,key="get_card_ids")
 
     if get_card_ids_button:
         selected_sets = available_sets if st.session_state.get("choose_all_sets", False) else st.session_state.get("sets_selection", [])
+        st.write(selected_sets)
 
         if not selected_sets:
             st.toast("Choose one set")
         else:
             asyncio.run(get_card_ids(game_index, selected_sets))
             st.toast("Parsing complited")
+
+
 
 
 

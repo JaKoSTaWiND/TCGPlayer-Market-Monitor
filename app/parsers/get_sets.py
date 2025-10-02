@@ -1,95 +1,54 @@
-import requests
 import pandas as pd
 import os
 import json
 import asyncio
 import aiohttp
-import streamlit as st
 
 from config import TCGPLAYER_SETS_API_URL
 from config import DATA_DIR
 from config import GAMES
 
-async def fetch_sets(session, game_name, game_index):
-    api_request = {
-                    "algorithm": "sales_dismax",
-                    "context": {
-                        "cart": {},
-                        "shippingCountry": "US",
-                        "userProfile": {}
-                    },
-                    "filters": {
-                        "match": {},
-                        "range": {},
-                        "term": {
-                            "productLineName": [game_index],
-                        },
-                    },
-                    "from": 0,
-                    "listingSearch": {
-                        "context": {
-                            "cart": {},
-                        },
-                        "filters": {
-                            "exclude": {
-                                "channelExclusion": 0,
-                            },
-                            "range": {
-                                "quantity": {
-                                    "gte": 1,
-                                },
-                            },
-                            "term": {
-                                "channelId": 0,
-                                "sellerStatus": "Live",
-                            },
-                        },
-                    },
-                    "settings": {
-                        "didYouMean": {},
-                        "useFuzzySearch": True,
-                    },
-                    "size": 24,
-                    "sort": {},
+async def fetch_sets_temp(session, games):
+
+    for game_name, game_data in games.items():
+        category_id = game_data["categoryId"]
+        game_index = game_data["index"]
+
+        try:
+            url = TCGPLAYER_SETS_API_URL.format(category_id=category_id)
+            response = await session.get(url)
+
+            if response.status != 200:
+                print("Error fetching sets")
+                return
+
+            sets_json = await response.json()
+
+            sets_list = sets_json['results']
+
+            sets = [
+                {
+                    'setNameId': item.get('setNameId'),
+                    'name': item.get('name'),
+                    'cleanSetName': item.get('cleanSetName'),
+                    'urlName': item.get('urlName'),
+                    'abbreviation': item.get('abbreviation'),
+                    'releaseDate': item.get('releaseDate'),
                 }
+                for item in sets_list
+            ]
 
-    try:
-        response = await session.post(TCGPLAYER_SETS_API_URL, json=api_request)
+            df_sets = pd.DataFrame(sets)
+            safe_name = game_index.replace("-", "_").replace(" ", "_")
+            output_path = os.path.join(DATA_DIR, f"{safe_name}_sets.parquet")
+            df_sets.to_parquet(output_path, index=False)
 
-        if response.status != 200:
-            print(f"❌ {game_name}: status {response.status}")
+        except Exception as error:
+            print("Error fetching sets")
+            print(error)
             return
 
 
-        sets_json = await response.json()
-
-        set_list = sets_json["results"][0]["aggregations"]["setName"]
-
-        sets = [
-                {
-                    "value": item.get("value"),
-                    "urlValue": item.get("urlValue")
-
-                }
-                for item in set_list
-                if item.get("value") and item.get("urlValue")
-            ]
-
-        # print(DATA_DIR)
-        # print(sets)
-        # print(f"{game_name} {len(sets)} sets found")
-
-
-        df_sets = pd.DataFrame(sets)
-        safe_name = game_index.replace("-", "_").replace(" ", "_")
-        output_path = os.path.join(DATA_DIR, f"{safe_name}_sets.parquet")
-        df_sets.to_parquet(output_path, index=False)
-
-        return game_name, len(sets)
-
-
-    except Exception as e:
-        print(f"Error for {game_name}: {e}")
 
 async def get_sets():
     headers = {
@@ -99,19 +58,6 @@ async def get_sets():
     }
 
     async with aiohttp.ClientSession(headers=headers) as session:
-        tasks = [
-            fetch_sets(session, game_name, game_index)
-            for game_name, game_index in GAMES.items()
-        ]
-        results = await asyncio.gather(*tasks)
+        await fetch_sets_temp(session, GAMES)
 
-        summary_lines = "\n".join([
-            f"For {game_name} found {count} sets."
-            for game_name, count in results
-            if game_name is not None
-        ])
-
-
-        return summary_lines
-
-
+# asyncio.run(get_sets_temp())

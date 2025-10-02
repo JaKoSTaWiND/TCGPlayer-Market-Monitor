@@ -19,7 +19,7 @@ df = DatabaseTracker.get_df()
 
 st.set_page_config(layout="wide")
 
-col1, col2 = st.columns([3, 10], gap="large")
+col1, col2 = st.columns([2, 8], gap=None)
 
 # --- COL1: FILE TREE ---
 with col1:

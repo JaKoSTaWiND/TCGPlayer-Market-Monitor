@@ -65,6 +65,7 @@ async def fetch_card_ids(session, game_index, setName, offset):
 
         ids = [
             {
+                "productLineUrlName": item.get("productLineUrlName"),
                 "setName": item.get("setName"),
                 "productId": item.get("productId")
             }
@@ -77,6 +78,14 @@ async def fetch_card_ids(session, game_index, setName, offset):
     except Exception as e:
         print(e)
         return []
+
+
+    except Exception as e:
+        print(e)
+
+
+
+
 
 
 # --- INIT FUNC ---
@@ -100,10 +109,10 @@ async def get_card_ids(game_index, sets):
         df_sets = df_sets.sort_values("releaseDate") # --- SORTING BY DATE
         sorted_sets = df_sets["name"].tolist() # --- NEW DATAFRAME
 
-        # print(df_sets[["name", "releaseDate"]])
+        print(df_sets[["name", "releaseDate"]])
     except Exception as e:
-        st.error(f"Failed to load or sort sets: {e}")
-        # print(f"Failed to load or sort sets: {e}")
+        # st.error(f"❌ Не удалось загрузить или отсортировать наборы: {e}")
+        print(f"❌ Не удалось загрузить или отсортировать наборы: {e}")
         sorted_sets = sets  # --- IF PARQUET DOES NOT HAVE 'releaseDate' OR IT IS NONE
 
 
@@ -138,18 +147,8 @@ async def get_card_ids(game_index, sets):
     # --- SAVE INTO PARQUET FILE ---
     df_all = pd.DataFrame(all_results)
     df_all.drop_duplicates(subset=["productId"], inplace=True)
-
     safe_name = game_index.replace("-", "_").replace(" ", "_")
     output_path = os.path.join(DATA_DIR, f"{safe_name}_ids.parquet")
-
-    if os.path.exists(output_path):
-        try:
-            df_existing = pd.read_parquet(output_path)
-            df_all = pd.concat([df_existing, df_all], ignore_index=True)
-            df_all.drop_duplicates(subset=["productId"], inplace=True)
-        except Exception as e:
-            st.warning(f"Failed to load existing file {e}")
-
     df_all.to_parquet(output_path, index=False)
     # print(f"💾 Saved all sets: {len(df_all)} cards")
     # st.toast = (f"Saved all sets: {len(df_all)} cards")
