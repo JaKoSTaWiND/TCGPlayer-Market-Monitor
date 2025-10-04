@@ -5,7 +5,6 @@ import pandas as pd
 import urllib.parse
 
 from config import DATA_DIR
-from config import EDIT_TABLE_URL
 from client.utils.classes.DatabaseTracker import DatabaseTracker
 from client.utils.dialogs.add_data_dialog import add_data
 from client.utils.dialogs.add_data_from_file_dialog import add_data_from_file_dialog
@@ -36,8 +35,8 @@ with col1:
         return_index=False,
         color="gray",
     )
-    st.write(f"`file_path: {file_path}`")
-    st.write(f"`selected_file: {file_name}`")
+    # st.write(f"`file_path: {file_path}`")
+    # st.write(f"`selected_file: {file_name}`")
 
     if selected_file and selected_file != DatabaseTracker.get_name():
         DatabaseTracker.set(selected_file)

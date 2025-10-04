@@ -58,8 +58,9 @@ GAMES = {
 
 
 # --- API ---
-# TCGPLAYER_SETS_API_URL = "https://mp-search-api.tcgplayer.com/v1/search/request"
 TCGPLAYER_SETS_API_URL = "https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId={category_id}&mpfev=4304"
+TCGPLAYER_SETS_COUNT_API_URL = "https://mp-search-api.tcgplayer.com/v1/search/request"
+
 TCGPLAYER_CARD_IDS_API_URL = "https://mp-search-api.tcgplayer.com/v1/search/request"
 
 # https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=68&mpfev=4304 - наборы
