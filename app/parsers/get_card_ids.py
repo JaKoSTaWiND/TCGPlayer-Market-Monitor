@@ -186,8 +186,7 @@ async def get_card_ids(game_index, sets):
 
 
 # if __name__ == "__main__":
-#
-#
+
 #     game_index = "magic"
 #     set_name = "Commander: Zendikar Rising"
 #
