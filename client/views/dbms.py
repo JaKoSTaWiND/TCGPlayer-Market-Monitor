@@ -6,8 +6,8 @@ import urllib.parse
 
 from config import DATA_DIR
 from client.utils.classes.DatabaseTracker import DatabaseTracker
-from client.utils.dialogs.add_data_dialog import add_data
-from client.utils.dialogs.add_data_from_file_dialog import add_data_from_file_dialog
+from client.utils.components.file_tree_comp import build_tree_data, extract_label_to_path
+
 
 
 file_name = DatabaseTracker.get_name()
@@ -24,23 +24,34 @@ col1, col2 = st.columns([2, 8], gap=None)
 
 # --- COL1: FILE TREE ---
 with col1:
+    tree_items = build_tree_data(DATA_DIR)
+
     selected_file = sac.tree(
-        items=[sac.TreeItem(file) for file in parquet_files],
-        label="app/data",
+        items=tree_items,
+        label="📁 Выберите файл",
         icon="table",
         size="sm",
         align="start",
-        open_all=True,
         checkbox=False,
         return_index=False,
         color="gray",
     )
-    # st.write(f"`file_path: {file_path}`")
-    # st.write(f"`selected_file: {file_name}`")
 
-    if selected_file and selected_file != DatabaseTracker.get_name():
-        DatabaseTracker.set(selected_file)
+    # Построим словарь label → value
+    label_to_path = extract_label_to_path(tree_items)
+    full_path = label_to_path.get(selected_file)
+
+    # st.write("📂 selected_file:", selected_file)
+    # st.write("📂 get_path():", full_path)
+    # st.write("📊 df type:", type(df))
+
+    if isinstance(selected_file, list):
+        selected_file = selected_file[0] if selected_file else None
+
+    if full_path and full_path != DatabaseTracker.get_path():
+        DatabaseTracker.set(full_path)  # ✅ сохраняем абсолютный путь
         st.rerun()
+
     file_name = DatabaseTracker.get_name()
     file_path = DatabaseTracker.get_path()
 
@@ -101,4 +112,8 @@ if df is not None:
             else:
                 filtered_df = df
 
-            st.dataframe(filtered_df, height=700)
+            if df is not None and not df.empty:
+                st.dataframe(filtered_df, height=700)
+            else:
+                st.warning("📭 Файл пустой или не удалось загрузить данные.")
+

@@ -1,42 +1,58 @@
-import streamlit as st
-import streamlit_antd_components as sac
 import os
-from config import DATA_DIR
-from client.utils.classes.DatabaseTracker import DatabaseTracker
+import streamlit_antd_components as sac
 
-def render_file_tree(parquet_files=None, label="app/data", icon="table", size="sm", color="gray"):
-    # --- Получаем список файлов ---
-    if parquet_files is None:
-        parquet_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".parquet")]
+def build_tree_data(root_dir):
+    tree = []
 
-    # --- Получаем текущее состояние ---
-    selected_file = DatabaseTracker.get_name()
-    selected_index = DatabaseTracker.get_index()
+    for root, dirs, files in os.walk(root_dir):
+        # Игнорируем скрытые папки
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
 
-    # --- Защита от выхода за границы ---
-    valid_index = None
-    if selected_index is not None and 0 <= selected_index < len(parquet_files):
-        valid_index = selected_index
+        # Получаем относительный путь
+        rel_root = os.path.relpath(root, root_dir)
+        if rel_root == ".":
+            rel_root = ""
 
-    # --- Отрисовка дерева ---
-    tree_selection = sac.tree(
-        items=[sac.TreeItem(file) for file in parquet_files],
-        label=label,
-        icon=icon,
-        size=size,
-        align="start",
-        open_all=True,
-        checkbox=False,
-        return_index=False,
-        color=color,
-        index=[valid_index] if valid_index is not None else []
-    )
+        # Добавляем файлы
+        parquet_files = [f for f in files if f.endswith(".parquet")]
+        file_items = [
+            {
+                "label": f,
+                "value": os.path.abspath(os.path.join(root, f))  # ← абсолютный путь
+            }
+            for f in parquet_files
+        ]
 
-    # --- Обновление состояния при выборе ---
-    if tree_selection and tree_selection != selected_file:
-        DatabaseTracker.set(tree_selection, parquet_files)
-        st.rerun()
+        # Вложенные папки
+        if rel_root == "":
+            tree.extend(file_items)
+        else:
+            # Найти родительскую ветку
+            parent = tree
+            parts = rel_root.split(os.sep)
+            for part in parts:
+                match = next((item for item in parent if item["label"] == part), None)
+                if not match:
+                    match = {"label": part, "children": []}
+                    parent.append(match)
+                parent = match.setdefault("children", [])
+            parent.extend(file_items)
 
-    return tree_selection
+    return tree
 
+
+# client/utils/components/file_tree_comp.py
+
+def extract_label_to_path(items):
+    label_to_path = {}
+
+    def walk(subitems):
+        for item in subitems:
+            if "children" in item:
+                walk(item["children"])
+            elif "label" in item and "value" in item:
+                label_to_path[item["label"]] = item["value"]
+
+    walk(items)
+    return label_to_path
 

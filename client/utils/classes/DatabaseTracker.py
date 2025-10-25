@@ -8,10 +8,9 @@ class DatabaseTracker:
 
     # --- SET SESSION STATES FOR FILE NAME & FILE PATH ---
     @staticmethod
-    def set(file_name):
-        st.session_state["selected_file"] = file_name
-        st.session_state["file_path"] = os.path.join(DATA_DIR, file_name)
-
+    def set(file_path):
+        st.session_state["selected_file"] = os.path.basename(file_path)
+        st.session_state["file_path"] = file_path  # ← сохраняем полный путь
 
     # --- GET FILE NAME ---
     @staticmethod
@@ -23,11 +22,11 @@ class DatabaseTracker:
     def get_path():
         return st.session_state.get("file_path")
 
+    # --- CLEAR SESSION STATES ---
     @staticmethod
     def clear():
         st.session_state["selected_file"] = None
         st.session_state["file_path"] = None
-
 
     # --- VIEW DATAFRAME ---
     @staticmethod
@@ -37,7 +36,7 @@ class DatabaseTracker:
             try:
                 return pd.read_parquet(path)
             except Exception as e:
-                st.error(f"Ошибка при чтении файла: {e}")
+                st.error(f"❌ Ошибка при чтении файла: {e}")
         return None
 
 

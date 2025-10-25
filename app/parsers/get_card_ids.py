@@ -5,7 +5,6 @@ import aiohttp
 import math
 import time
 import streamlit as st
-from streamlit import toast
 
 from config import DATA_DIR
 from config import TCGPLAYER_CARD_IDS_API_URL
@@ -13,8 +12,6 @@ from config import TCGPLAYER_CARD_IDS_API_URL
 
 # --- FETCH TO API FUNC ---
 async def fetch_card_ids(session, game_index, setName, offset):
-
-    start = time.time()
 
     api_request = {
         "algorithm": "sales_dismax",
@@ -77,9 +74,6 @@ async def fetch_card_ids(session, game_index, setName, offset):
             if item.get("productId") and item.get("setName") and item.get("productLineUrlName")
         ]
 
-        duration = time.time() - start
-#         print(f"⏱ Offset {offset} completed in {duration:.2f} seconds")
-
         return ids
 
     except Exception as e:
@@ -129,19 +123,12 @@ async def get_card_ids(game_index, sets):
 #                 print(f"🚀 Sending batch {batch_index + 1} with offsets: {batch}")
                 st.toast(f"Sending batch {batch_index + 1} with offsets: {batch}")
 
-                # 👇 Выводим каждый offset-запрос
-                for offset in batch:
-#                     print(f"🔸 Preparing request for offset {offset} in set '{setName}'")
-                    start_time = time.time()
-
                 tasks = [
                     fetch_card_ids(session, game_index, setName, offset)
                     for offset in batch
                 ]
                 batch_results = await asyncio.gather(*tasks)
 
-                duration = time.time() - start_time
-#                 print(f"⏱ Batch {batch_index + 1} completed in {duration:.2f} seconds")
 
                 batch_total = 0
                 for result_index, result in enumerate(batch_results):
